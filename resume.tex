@@ -1,0 +1,104 @@
+% !TEX program = xelatex
+\documentclass[a4paper,10pt]{article}
+\usepackage[left=0.5in,right=0.5in,top=0.4in,bottom=0.4in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{bookmark}
+\usepackage{xcolor}
+\usepackage{lmodern}
+\usepackage{fontawesome5}
+
+\definecolor{primaryColor}{RGB}{6, 78, 59}
+\definecolor{contactGray}{RGB}{80,80,80}
+\hypersetup{colorlinks=true,urlcolor=primaryColor,linkcolor=primaryColor}
+
+\titleformat{\section}{\normalsize\bfseries\color{primaryColor}}{}{0em}{}[\vspace{-0.1em}{\color{primaryColor!65}\titlerule}]
+\titlespacing{\section}{0pt}{8pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.2em,itemsep=0pt,topsep=1pt,parsep=0pt,partopsep=1.5pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\pagestyle{empty}
+\emergencystretch=2em
+
+\newcommand{\entry}[2]{\textbf{#1}\hfill\textit{#2}\\[-1pt]}
+
+\begin{document}
+
+\begin{center}
+    {\Huge\bfseries\color{primaryColor} Yashwant K} \\ \vspace{4pt}
+    \small
+    \href{mailto:yashwantk0305@gmail.com}{\faEnvelope\ yashwantk0305@gmail.com} \quad
+    \href{tel:+919342877060}{\faPhone\ +91-93428-77060} \quad
+    \href{https://portfolio-website-steel-zeta-99.vercel.app/}{\faGlobe\ Portfolio} \\ \vspace{2pt}
+    \href{https://www.linkedin.com/in/yashwant-k-935aa0292/}{\faLinkedin\ LinkedIn} \quad
+    \href{https://github.com/Yashwant00CR7}{\faGithub\ GitHub} \quad
+    \href{https://leetcode.com/u/Yashwant_K/}{\faCode\ LeetCode}
+\end{center}
+
+\vspace{-4pt}
+
+\section*{Summary}
+AI/ML Engineer specializing in Agentic AI, multi-agent orchestration, and on-device Gen AI development. Architecting production-grade RAG pipelines and serverless agentic workflows, eager to solve real-world problems through innovative solutions and contribute to impactful projects that make a difference.
+\section*{Education}
+\vspace{4pt}
+\entry{Sri Shakthi Institute of Engineering and Technology}{2023 -- 2027}
+\textit{Bachelor of Engineering in Computer Science and Engineering \;|\; CGPA: 8.16} \vspace{6pt}
+
+\entry{Amrita Vidyalam, Nallampalayam --- Higher Education (CBSE)}{2022 -- 2023}
+\textit{Higher Education-CBSE \;|\; Percentage: 84.3\%} \vspace{6pt}
+
+\entry{Amrita Vidyalam, Nallampalayam --- Primary Education (CBSE)}{2020 -- 2021}
+\textit{Primary Education-CBSE \;|\; Percentage: 92.1\%}
+
+\section*{Technical Skills}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=2pt]
+    \item \textbf{Agentic AI \& RAG:} LangGraph (Stateful Agents), LangChain, Multi-Agent Swarms, GraphRAG, MCP
+    \item \textbf{AI/ML Foundations:} PyTorch, LLM Fine-tuning (LoRA), Transformers, Sentence Embeddings
+    \item \textbf{Data \& Databases:} Vector DBs (Pinecone, SQLite VSS), SQL, Pandas, NumPy, Data Visualization (Plotly)
+    \item \textbf{Engineering \& Frontend:} Python (AsyncIO), Streamlit, FastAPI, Docker, GCP, Git, Crawl4AI, Hugging Face
+\end{itemize}
+
+\section*{Projects}
+\vspace{3pt}
+
+\entry{AI-Powered Career Development Assistant}{\href{https://github.com/Yashwant00CR7/Personalized-Suggestion-AI}{\faGithub\ GitHub} \ $\cdot$ \ \href{https://personalized-career-development-bot.streamlit.app/}{\faExternalLink*\ Live Demo}} \vspace{-10pt}
+\begin{itemize}[topsep=-5pt, itemsep=0pt, parsep=0pt]
+    \item \textbf{Problem:} College students lack personalized, data-driven guidance for company-specific roles and skill-gap identification.
+    \item \textbf{Solution:} Built an AI mentorship platform using \textbf{LangChain} and \textbf{Google Gemini} to analyze resumes and match profiles against a curated company role dataset.
+    \item \textbf{Impact:} Implemented semantic retrieval via \textbf{Pinecone} and \textbf{Sentence Transformers} to generate custom course recommendations and actionable career to-do lists within a \textbf{Streamlit} dashboard.
+    \item \textbf{Tech Stack:} Python, LangChain, Google Gemini, Pinecone, Sentence Transformers, Streamlit, Pandas
+\end{itemize} \vspace{10pt}
+
+\entry{AI-Powered Package Conflict Resolver}{\href{https://github.com/Yashwant00CR7/AI-Powered-Package-Conflict-Resolver}{\faGithub\ GitHub} \ $\cdot$ \ \href{https://huggingface.org/spaces/Yash030/AI-Package-Doctor/}{\faExternalLink*\ Live Demo}} \vspace{-10pt}
+\begin{itemize}[topsep=-5pt, itemsep=0pt, parsep=0pt]
+    \item \textbf{Problem:} Dependency resolution requires high-precision tool coordination and real-time documentation grounding.
+    \item \textbf{Solution:} Engineered a \textbf{Stateful Multi-Agent Swarm} (ADK) leveraging \textbf{Function Calling} to autonomously scrape package docs via Crawl4AI and execute conflict-resolution scripts.
+    \item \textbf{Impact:} Implemented recursive agentic reasoning that reduced manual debugging by 45\%, achieving a 95\% resolution rate monitored and traced through \textbf{LangSmith}.
+    \item \textbf{Tech Stack:} Python, Google ADK, LangSmith, Crawl4AI, Pinecone, Gemini, OpenRouter, FastAPI
+\end{itemize} \vspace{10pt}
+
+\entry{Calendar AI: Serverless Agentic Scheduler}{\href{https://github.com/Yashwant00CR7/Calendar-Agent}{\faGithub\ GitHub}} \vspace{-10pt}
+\begin{itemize}[topsep=-5pt, itemsep=0pt, parsep=0pt]
+    \item \textbf{Problem:} Edge devices lack the orchestration depth required for secure, high-precision personal assistant tasks.
+    \item \textbf{Solution:} Built a \textbf{Privacy-First Agentic Scheduler} using Flutter and Gemini 2.5 Flash, implementing a hybrid intent router for zero-egress tool execution.
+    \item \textbf{Impact:} Optimized \textbf{on-device function calling} precision, enabling concurrent CRUD operations with millisecond-level native latency without compromising personal user data.
+    \item \textbf{Tech Stack:} Dart, Flutter, Google Cloud APIs, Gemini 2.5 Flash, SQLite VSS
+\end{itemize}
+
+\section*{Achievements}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=2pt]
+    \item \textbf{Managed} the end-to-end planning and execution of \textbf{``Kalam -- The Tech Fest''} for \textbf{500+ attendees} by facilitating \textbf{30 cross-functional sub-teams}.
+    \item \textbf{Developed} and presented a functional AI prototype within a \textbf{24-hour sprint} at the \textbf{KPR National Hackathon}, competing against \textbf{50+ inter-state teams}.
+    \item \textbf{Secured} a \textbf{top 5 ranking} out of 15 departmental teams for the \textbf{Smart India Hackathon (SIH)} internal selection through competitive screening.
+\end{itemize}
+
+\section*{Certifications}
+\begin{itemize}[leftmargin=*, noitemsep, topsep=2pt]
+    \item \textbf{Mastered} end-to-end \textbf{AI/ML and Data Science} workflows through comprehensive Kaggle learning tracks, focusing on model building and production deployment.
+    \item \textbf{Strengthened} advanced \textbf{Python and Software Engineering} foundations by completing industry-aligned certification tracks in predictive modeling.
+\end{itemize}
+
+\end{document}

@@ -1,0 +1,445 @@
+================================================================================
+         PLACEMENT INTERVIEW QUESTION BANK — YASHWANT K
+         Roles: Agentic AI Engineer | Data Engineer | Data Scientist | ML Engineer
+         Difficulty: Medium → Hard
+         Total Questions: 120
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 1: RESUME & PROJECT DEEP DIVE (25 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- Career Development Assistant ---
+
+1.  Walk me through the end-to-end architecture of your Career Development
+    Assistant. How does a resume PDF go from upload to final recommendation?
+
+2.  Why did you choose Pinecone over other vector databases like Weaviate,
+    Milvus, or ChromaDB? What trade-offs did you evaluate?
+
+3.  How did you chunk the resume text before embedding? What chunking strategy
+    did you use and why?
+
+4.  Your system matches resumes against a "curated company role dataset."
+    How did you structure this dataset, and how do you handle roles that
+    don't cleanly map to a student's profile?
+
+5.  What embedding model did you use with Sentence Transformers? How did you
+    decide on the dimensionality, and did you benchmark alternatives?
+
+6.  How does your LangChain pipeline handle hallucinated course recommendations
+    from the Gemini model? Do you have any grounding or verification layer?
+
+7.  If two students upload nearly identical resumes but want different career
+    paths, how does your system differentiate the recommendations?
+
+8.  How would you scale this system from a Streamlit demo to handle 10,000
+    concurrent users? Walk me through the architectural changes.
+
+--- Package Conflict Resolver (AI Package Doctor) ---
+
+9.  Explain the "Stateful Multi-Agent Swarm" architecture. How many agents
+    exist, what is each agent's responsibility, and how do they communicate?
+
+10. You mention "recursive agentic reasoning." What is the termination
+    condition? How do you prevent infinite loops in the reasoning chain?
+
+11. How does your system use Crawl4AI to scrape package documentation in
+    real-time? What happens when a documentation page is rate-limited or down?
+
+12. You achieved a "95% resolution rate." How did you define "resolution,"
+    and what does the remaining 5% failure look like?
+
+13. Explain how Function Calling works in your ADK pipeline. How does the
+    model decide which tool to invoke, and how do you handle tool errors?
+
+14. Why did you choose OpenRouter over directly calling Google Gemini APIs?
+    What routing or fallback logic does OpenRouter provide in your system?
+
+15. How does LangSmith tracing work in your pipeline? Walk me through how
+    you would debug a failed dependency resolution using the trace.
+
+16. If a package has conflicting transitive dependencies three levels deep,
+    how does your swarm handle that complexity?
+
+--- Calendar AI (On-Device Agent) ---
+
+17. Explain the "hybrid intent router" in your Calendar Agent. How does it
+    decide whether to handle a request locally vs. making an API call?
+
+18. What is "zero-egress tool execution"? How do you guarantee that no
+    user data leaves the device during agent operations?
+
+19. How does SQLite VSS work on a mobile device? What are the memory and
+    storage constraints you had to work around?
+
+20. You mention "concurrent CRUD operations." How do you handle race
+    conditions when two agent threads try to modify the same calendar event?
+
+21. Why Flutter + Dart for an AI agent instead of a native Swift/Kotlin
+    approach? What were the performance implications?
+
+--- Cross-Project & General ---
+
+22. Across all three projects, what is your approach to prompt engineering?
+    Do you version-control your prompts? How do you test prompt regressions?
+
+23. If you had to pick ONE project to rebuild from scratch with unlimited
+    resources, which would it be and what would you change architecturally?
+
+24. How do you handle API key management and secrets across your deployed
+    applications? Walk me through your security model.
+
+25. What is the hardest debugging session you've had across these projects?
+    What was the root cause, and how long did it take to find?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 2: MACHINE LEARNING & DEEP LEARNING FUNDAMENTALS (20 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+26. Explain the difference between LoRA and full fine-tuning. When would you
+    choose LoRA over full fine-tuning, and what are the mathematical
+    intuitions behind low-rank adaptation?
+
+27. How do Transformer attention mechanisms work? Derive the computational
+    complexity of self-attention and explain why it's quadratic.
+
+28. What is the difference between cosine similarity and dot product
+    similarity when comparing embeddings? When does the choice matter?
+
+29. Explain the bias-variance tradeoff. How would you diagnose whether
+    a model is underfitting vs. overfitting from the learning curves?
+
+30. What is the vanishing gradient problem, and how do architectures
+    like LSTMs and Transformers address it differently?
+
+31. Explain cross-entropy loss. Why is it preferred over MSE for
+    classification tasks? Derive the gradient.
+
+32. What is batch normalization, and why does it accelerate training?
+    How does it behave differently during training vs. inference?
+
+33. Explain the difference between L1 and L2 regularization. Why does
+    L1 produce sparse weights while L2 does not?
+
+34. What are Sentence Transformers, and how do they differ from vanilla
+    BERT embeddings? Why are they better for semantic similarity tasks?
+
+35. Explain how contrastive learning works in the context of embedding
+    models. What loss functions are commonly used?
+
+36. What is knowledge distillation? How would you distill a large LLM
+    into a smaller model for on-device deployment?
+
+37. Explain precision, recall, F1, and AUC-ROC. When would you optimize
+    for recall over precision in a real-world system?
+
+38. How does gradient descent differ from Adam optimizer? Explain the
+    role of momentum and adaptive learning rates.
+
+39. What is the difference between generative and discriminative models?
+    Give examples and explain when each is preferred.
+
+40. Explain how a Mixture of Experts (MoE) architecture works. Why are
+    modern LLMs like Mixtral using this approach?
+
+41. What is the KL Divergence, and how is it used in variational
+    autoencoders and RLHF fine-tuning?
+
+42. How does beam search differ from greedy decoding and nucleus (top-p)
+    sampling? What are the trade-offs in generation quality?
+
+43. Explain the concept of "attention heads" in multi-head attention.
+    Why do we use multiple heads instead of a single large attention?
+
+44. What is the difference between pre-training, fine-tuning, and
+    in-context learning (ICL)? When is each approach appropriate?
+
+45. How do you evaluate an LLM's output quality beyond accuracy?
+    Explain at least three evaluation frameworks or metrics.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 3: DATA ENGINEERING (18 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+46. Explain the difference between a data lake and a data warehouse.
+    When would you choose one over the other for an ML pipeline?
+
+47. What is the difference between batch processing and stream processing?
+    How would you design a pipeline that supports both?
+
+48. You used Pinecone as a vector database. How does vector indexing
+    (HNSW, IVF) work internally? What are the trade-offs between
+    recall and latency?
+
+49. Explain the CAP theorem. How does it apply to distributed databases
+    that you might use in a production AI pipeline?
+
+50. What is data skew, and how does it affect distributed processing
+    frameworks like Spark? How would you mitigate it?
+
+51. How would you design an ETL pipeline to ingest 10 million resumes
+    daily, embed them, and store them in a vector database?
+
+52. What is schema evolution, and why is it critical in production
+    data pipelines? How do you handle it?
+
+53. Explain the difference between OLTP and OLAP databases. Which one
+    is more appropriate for the company role dataset in your project?
+
+54. What are the ACID properties? How do they apply (or not apply)
+    to NoSQL and vector databases?
+
+55. How would you implement a CDC (Change Data Capture) pipeline for
+    real-time updates to your Pinecone index?
+
+56. Explain partitioning vs. sharding. How would you partition a
+    vector database with 100 million embeddings?
+
+57. What is data lineage, and why is it important for debugging
+    ML pipeline failures?
+
+58. How do you handle duplicate records in a streaming data pipeline?
+    Explain exactly-once vs. at-least-once semantics.
+
+59. What is a slowly changing dimension (SCD)? How would you model
+    a student's evolving skill profile over time?
+
+60. Explain how you would design a feature store for real-time ML
+    inference. What are the key components?
+
+61. What is the difference between row-oriented and columnar storage
+    formats? Why is Parquet preferred for analytical workloads?
+
+62. How do you monitor data quality in a production pipeline? What
+    metrics would you track, and how would you alert on anomalies?
+
+63. Explain idempotency in data pipelines. Why is it critical, and
+    how do you ensure your ETL jobs are idempotent?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 4: SYSTEM DESIGN (15 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+64. Design a production-grade multi-agent system that can handle
+    customer support for an e-commerce platform. How would you
+    architect the agent routing, memory, and escalation layers?
+
+65. Design a RAG pipeline that serves 1 million queries per day with
+    sub-200ms latency. What caching, indexing, and infrastructure
+    decisions would you make?
+
+66. How would you architect a system where multiple AI agents
+    collaborate to write, review, and deploy code autonomously?
+    What safety guardrails would you implement?
+
+67. Design a real-time recommendation system using embeddings.
+    How would you handle cold-start problems for new users?
+
+68. You need to build an MCP server that exposes 50 different tools
+    to an LLM agent. How do you handle tool discovery, selection
+    efficiency, and error recovery?
+
+69. Design a distributed web scraping system (like Crawl4AI at scale)
+    that respects rate limits, handles failures, and stores results
+    for downstream agent consumption.
+
+70. How would you design a system for A/B testing different prompts
+    in production? What metrics would you track to determine a winner?
+
+71. Design an on-device AI agent architecture for a smartphone that
+    must work completely offline. What are the constraints, and how
+    do you handle model updates?
+
+72. How would you architect a multi-tenant SaaS platform where each
+    customer has their own fine-tuned LLM? Address cost, isolation,
+    and deployment concerns.
+
+73. Design a pipeline for continuous evaluation of deployed LLM agents.
+    How do you detect prompt drift, regression, and adversarial inputs?
+
+74. How would you design a knowledge graph that powers a GraphRAG
+    system? What entities, relationships, and query patterns would
+    you optimize for?
+
+75. Design a FastAPI backend that handles both synchronous LLM calls
+    and long-running agent workflows. How do you manage timeouts,
+    retries, and user-facing progress updates?
+
+76. How would you design a semantic search system that handles
+    multilingual queries across documents in 10+ languages?
+
+77. Architect a system where an AI agent can browse the web, fill
+    out forms, and extract structured data. What are the reliability
+    and security challenges?
+
+78. Design a data pipeline that processes unstructured documents
+    (PDFs, images, spreadsheets) into a unified embedding space
+    for retrieval. How do you handle modality differences?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 5: PYTHON & CODING (20 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+79. Explain the Python GIL. How does it affect multi-threaded
+    applications, and why is AsyncIO a better choice for I/O-bound
+    agent workflows?
+
+80. What is the difference between `asyncio.gather()`,
+    `asyncio.wait()`, and `asyncio.TaskGroup()`? When would you
+    use each in an agent pipeline?
+
+81. Write a Python function that implements exponential backoff with
+    jitter for retrying failed API calls to an LLM provider.
+
+82. Explain Python generators and `yield`. How would you use them
+    to stream LLM responses token-by-token to a frontend?
+
+83. What is the difference between `__slots__` and `__dict__` in
+    Python classes? When would you use `__slots__` for performance?
+
+84. Explain how Python's `async for` and `async with` work. Give
+    a real-world example from an agent workflow.
+
+85. How does Python's `functools.lru_cache` work internally? What
+    are its limitations for caching LLM responses?
+
+86. Write a decorator that logs the execution time, input arguments,
+    and return value of any async function.
+
+87. Explain the difference between shallow copy, deep copy, and
+    assignment in Python. When does this matter in data pipelines?
+
+88. How do you handle memory leaks in long-running Python processes
+    like an agent server? What tools would you use to diagnose them?
+
+89. Explain Python's `dataclasses` vs `Pydantic` models. Why is
+    Pydantic preferred for API validation in FastAPI?
+
+90. Write a Python async context manager that manages a connection
+    pool for concurrent API calls to multiple LLM providers.
+
+91. What is metaprogramming in Python? Explain `__init_subclass__`,
+    `__class_getitem__`, and metaclasses with use cases.
+
+92. How does Python's garbage collector work? Explain reference
+    counting vs. cyclic garbage collection.
+
+93. Write a function that takes a nested JSON object of arbitrary
+    depth and flattens it into a single-level dictionary with
+    dot-notated keys.
+
+94. Explain the `MRO` (Method Resolution Order) in Python. How does
+    it handle diamond inheritance?
+
+95. How would you implement a rate limiter in Python using AsyncIO
+    that allows N requests per second across multiple coroutines?
+
+96. What is the difference between `ProcessPoolExecutor` and
+    `ThreadPoolExecutor`? When would you use each in an ML pipeline?
+
+97. Write a Python function that implements a sliding window for
+    text chunking with configurable overlap for RAG ingestion.
+
+98. Explain how `typing.Protocol` works in Python. How is it
+    different from abstract base classes, and when is it preferred?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 6: SCENARIO-BASED / REAL-WORLD PROBLEM SOLVING (12 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+99.  Your RAG pipeline is returning factually correct but irrelevant
+     answers. Retrieval precision is high, but users are unsatisfied.
+     How do you diagnose and fix this?
+
+100. An agent in your multi-agent swarm is stuck in an infinite tool-call
+     loop, burning API credits. How do you detect this in production
+     and prevent it from happening again?
+
+101. A client reports that your Career Assistant is recommending the
+     same 3 courses to every user regardless of their resume. What
+     is your debugging methodology?
+
+102. Your Pinecone index has grown to 50 million vectors and query
+     latency has increased from 50ms to 800ms. How do you fix this
+     without rebuilding the entire index?
+
+103. You deploy a new version of your agent prompt, and the resolution
+     rate drops from 95% to 60%. How do you roll back safely, and
+     what observability would have caught this earlier?
+
+104. A user uploads a resume in a language your system doesn't support.
+     How would you gracefully handle this, and what would the ideal
+     long-term solution be?
+
+105. Your agent system needs to integrate with a third-party API that
+     has unpredictable latency (50ms to 30 seconds). How do you
+     design the agent workflow to handle this without blocking?
+
+106. Two agents in your swarm produce contradictory outputs for the
+     same input. How do you implement a conflict resolution mechanism?
+
+107. Your on-device Calendar Agent starts consuming excessive battery
+     on older phones. How do you profile and optimize it?
+
+108. A hiring manager asks you to add a "confidence score" to every
+     recommendation your Career Assistant makes. How do you implement
+     this meaningfully (not just softmax temperature)?
+
+109. Your web scraper (Crawl4AI) is getting blocked by Cloudflare on
+     critical documentation sites. What ethical and technical
+     approaches would you take to solve this?
+
+110. You notice that your Sentence Transformer embeddings cluster
+     resumes from the same college together, creating a bias.
+     How do you detect and mitigate this embedding bias?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 7: HR / BEHAVIORAL QUESTIONS (10 Questions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+111. You managed 30 sub-teams for Kalam Tech Fest. Tell me about a
+     time when two teams had a conflict, and how you resolved it.
+
+112. During the KPR Hackathon, you built a prototype in 24 hours.
+     What did you sacrifice (code quality, features, testing) to
+     meet the deadline, and how did you justify that trade-off?
+
+113. Tell me about a technical decision you made that you later
+     realized was wrong. How did you course-correct?
+
+114. How do you stay updated with the rapidly evolving AI/ML space?
+     Give me a specific example of something you learned recently
+     that changed how you build systems.
+
+115. Describe a situation where you had to explain a complex
+     technical concept (like RAG or multi-agent systems) to a
+     non-technical stakeholder. How did you approach it?
+
+116. You're working on a team, and a senior developer disagrees with
+     your architectural choice. How do you handle the disagreement?
+
+117. What is your process when you're stuck on a bug for more than
+     2 hours? Walk me through your actual debugging workflow.
+
+118. Tell me about a time you received critical feedback on your
+     code or project. How did you respond, and what changed?
+
+119. If you had to choose between shipping a feature with known
+     limitations vs. delaying the release for a perfect solution,
+     what framework do you use to decide?
+
+120. Where do you see the field of Agentic AI in 3 years, and how
+     are you positioning yourself to be relevant in that future?
+
+
+================================================================================
+                          END OF QUESTION BANK
+================================================================================

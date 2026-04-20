@@ -1,0 +1,1394 @@
+================================================================================
+         PLACEMENT INTERVIEW ANSWER KEY — YASHWANT K
+         Roles: Agentic AI Engineer | Data Engineer | Data Scientist | ML Engineer
+         Total Answers: 120
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 1: RESUME & PROJECT DEEP DIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q1. Walk me through the end-to-end architecture of your Career Development
+    Assistant. How does a resume PDF go from upload to final recommendation?
+
+A1. • User uploads PDF via Streamlit → PyPDF extracts raw text
+    • Text is chunked (recursive character splitter, ~500 tokens, 50 overlap)
+    • Chunks embedded via Sentence Transformers → stored/queried in Pinecone
+    • User query + top-k retrieved chunks → injected into LangChain prompt template
+    • Google Gemini generates personalized recommendations (courses, roles, to-do)
+    • Results rendered in Streamlit dashboard with Plotly skill-gap visualizations
+
+---
+
+Q2. Why did you choose Pinecone over other vector databases like Weaviate,
+    Milvus, or ChromaDB? What trade-offs did you evaluate?
+
+A2. • Pinecone: fully managed, zero-ops, serverless scaling, sub-50ms latency
+    • ChromaDB: local-only, no production scaling, good for prototyping
+    • Weaviate: self-hosted complexity, better for hybrid search (BM25 + vector)
+    • Milvus: powerful but heavy infra overhead (etcd, MinIO, Pulsar)
+    • Trade-off: chose Pinecone for fastest time-to-production + free tier for demos
+    • If cost were a concern at scale, I'd evaluate Qdrant (open-source, performant)
+
+---
+
+Q3. How did you chunk the resume text before embedding? What chunking strategy
+    did you use and why?
+
+A3. • Used LangChain's RecursiveCharacterTextSplitter
+    • Chunk size: ~500 tokens; Overlap: ~50 tokens (10%)
+    • Recursive splitter tries paragraph → sentence → character boundaries
+    • Why: resumes are short documents — small chunks preserve per-skill context
+    • Overlap ensures no information is lost at chunk boundaries
+    • Alternative considered: semantic chunking (split by topic), but overkill for resumes
+
+---
+
+Q4. Your system matches resumes against a "curated company role dataset."
+    How did you structure this dataset, and how do you handle roles that
+    don't cleanly map to a student's profile?
+
+A4. • Dataset: Excel file with columns — Company, Role, Required Skills, Description
+    • Each role entry is embedded and stored in Pinecone alongside resume vectors
+    • Matching: cosine similarity between resume embedding and role embeddings
+    • For ambiguous profiles: return top-k matches with similarity scores, let user filter
+    • Fallback: if no role scores above threshold (e.g., 0.6), surface "general" tracks
+    • Long-term: cluster roles by domain and recommend the closest domain first
+
+---
+
+Q5. What embedding model did you use with Sentence Transformers? How did you
+    decide on the dimensionality, and did you benchmark alternatives?
+
+A5. • Model: all-MiniLM-L6-v2 (384-dim) — fast, lightweight, strong on semantic tasks
+    • Why 384-dim: balances quality vs. storage cost in Pinecone (pricing per dimension)
+    • Alternatives considered: all-mpnet-base-v2 (768-dim, higher quality, 2x cost)
+    • Benchmarked on STS-B (Semantic Textual Similarity): MiniLM scored 0.82+ Spearman
+    • For production: would consider instructor-xl or e5-large for domain-specific tuning
+
+---
+
+Q6. How does your LangChain pipeline handle hallucinated course recommendations
+    from the Gemini model? Do you have any grounding or verification layer?
+
+A6. • Primary defense: retrieved context injection — model answers only from chunks
+    • Prompt includes explicit instruction: "Only recommend courses from provided context"
+    • Post-processing: regex/URL validation on any generated course links
+    • No real-time fact-checking layer currently (limitation acknowledged)
+    • Improvement path: add a verification agent that checks course URLs via API calls
+    • Could also add Ragas faithfulness scoring to flag low-grounding answers
+
+---
+
+Q7. If two students upload nearly identical resumes but want different career
+    paths, how does your system differentiate the recommendations?
+
+A7. • The system takes an explicit user query/goal as input alongside the resume
+    • Query embedding differs based on stated career interest (e.g., "data science" vs. "backend")
+    • Semantic retrieval pulls different role matches based on the query vector
+    • Gemini prompt includes both the resume context AND the user's stated goal
+    • Result: same resume, different query → different retrieval → different recommendations
+
+---
+
+Q8. How would you scale this system from a Streamlit demo to handle 10,000
+    concurrent users? Walk me through the architectural changes.
+
+A8. • Replace Streamlit with FastAPI backend + React/Next.js frontend
+    • Add Redis for session caching and rate limiting
+    • Pinecone already scales serverlessly — no changes needed there
+    • Use Celery/BullMQ for async embedding + recommendation generation
+    • Deploy on GCP Cloud Run (auto-scaling containers) behind a load balancer
+    • Add WebSocket or SSE for streaming LLM responses to frontend
+
+---
+
+Q9. Explain the "Stateful Multi-Agent Swarm" architecture. How many agents
+    exist, what is each agent's responsibility, and how do they communicate?
+
+A9. • Agents: (1) Orchestrator — routes tasks, maintains state
+    • (2) Scraper Agent — uses Crawl4AI to fetch live package documentation
+    • (3) Analyzer Agent — parses dependency trees and identifies conflicts
+    • (4) Resolver Agent — proposes and validates resolution strategies
+    • Communication: via shared state dict managed by Google ADK's session context
+    • Stateful: each agent reads/writes to a shared memory, preserving multi-turn context
+
+---
+
+Q10. You mention "recursive agentic reasoning." What is the termination
+     condition? How do you prevent infinite loops in the reasoning chain?
+
+A10. • Termination conditions: (1) conflict resolved successfully, (2) max iterations hit
+     • Max iteration cap: 5 recursive loops (configurable)
+     • Each iteration checks: "Is the dependency tree now conflict-free?" — if yes, stop
+     • Safety: token budget limit per session to prevent runaway API costs
+     • Logging: every iteration logged to LangSmith — if loops detected, alert fires
+     • Fallback: after max retries, return partial resolution + human-readable error
+
+---
+
+Q11. How does your system use Crawl4AI to scrape package documentation in
+     real-time? What happens when a documentation page is rate-limited or down?
+
+A11. • Crawl4AI AsyncWebCrawler fetches docs URL → returns structured markdown
+     • Result cached in Pinecone (embed doc chunks) to avoid repeated scrapes
+     • Rate-limited: exponential backoff (1s, 2s, 4s) with max 3 retries
+     • Page down: fallback to cached version in Pinecone; if no cache, skip with warning
+     • Agent receives a "documentation unavailable" signal and adjusts reasoning accordingly
+
+---
+
+Q12. You achieved a "95% resolution rate." How did you define "resolution,"
+     and what does the remaining 5% failure look like?
+
+A12. • "Resolution" = agent produces a valid requirements.txt / pyproject.toml with
+       no conflicting version pins, verified by a pip dry-run check
+     • 5% failures: (1) packages with no public docs, (2) native C-extension conflicts
+       that can't be solved purely via version pinning, (3) circular dependencies
+     • Measured on a test suite of 100 real-world dependency conflicts from GitHub issues
+
+---
+
+Q13. Explain how Function Calling works in your ADK pipeline. How does the
+     model decide which tool to invoke, and how do you handle tool errors?
+
+A13. • ADK exposes tools as JSON schema declarations (name, description, parameters)
+     • Model receives schemas in system prompt → outputs structured JSON tool call
+     • ADK runtime parses the JSON, validates params, and executes the function
+     • Tool selection: model matches user intent to tool description via semantic reasoning
+     • Tool errors: caught in try/except → error message fed back to model for re-planning
+     • Critical failures: logged, agent falls back to a simpler tool or asks for clarification
+
+---
+
+Q14. Why did you choose OpenRouter over directly calling Google Gemini APIs?
+     What routing or fallback logic does OpenRouter provide in your system?
+
+A14. • OpenRouter: single API endpoint → access to 100+ models (Gemini, Claude, Llama)
+     • Benefit: automatic model fallback if primary model is rate-limited or down
+     • Cost: transparent pricing comparison across providers via their dashboard
+     • Routing logic: set primary model (Gemini) with fallback to Claude/Llama on failure
+     • Also enables A/B testing different models without changing backend code
+
+---
+
+Q15. How does LangSmith tracing work in your pipeline? Walk me through how
+     you would debug a failed dependency resolution using the trace.
+
+A15. • LangSmith captures every LLM call, tool invocation, and agent step as a "trace"
+     • Each trace shows: input prompt, output response, latency, token count, tool calls
+     • Debugging: open the failed run → inspect which agent step returned an error
+     • Check: was the scraper agent's output malformed? Did the resolver hallucinate?
+     • Root cause isolation: compare the trace of a successful run vs. the failed one
+     • Can also tag traces with metadata (package name, conflict type) for filtering
+
+---
+
+Q16. If a package has conflicting transitive dependencies three levels deep,
+     how does your swarm handle that complexity?
+
+A16. • Analyzer Agent builds a full dependency tree recursively (like pip's resolver)
+     • Identifies the conflict node and traces it back to the root package
+     • Resolver Agent proposes: (1) version pin overrides, (2) package alternatives
+     • If too deep: agent suggests using pip's backtracking resolver or poetry
+     • Swarm escalates to user with a clear report if automated resolution fails
+
+---
+
+Q17. Explain the "hybrid intent router" in your Calendar Agent. How does it
+     decide whether to handle a request locally vs. making an API call?
+
+A17. • Intent classification: Gemini Flash classifies user input into intent categories
+     • Local intents: CRUD on SQLite (create/read/update/delete events) — no network
+     • API intents: weather lookup, email integration — require network calls
+     • Router logic: if intent is in the local-only set → execute on-device
+     • If intent requires external data → route to cloud API with minimal payload
+     • Privacy rule: no calendar data ever leaves the device in the API payload
+
+---
+
+Q18. What is "zero-egress tool execution"? How do you guarantee that no
+     user data leaves the device during agent operations?
+
+A18. • Zero-egress: all tool execution happens locally; no user data sent to cloud
+     • Gemini Flash runs on-device (via Google AI SDK) — inference is local
+     • Calendar CRUD uses SQLite on local storage — no sync to any server
+     • API calls (if needed) only send generic queries, never calendar entries
+     • Guarantee: network layer intercepted — all outgoing payloads are logged/audited
+     • Architecture enforces data separation: user data layer has no network access
+
+---
+
+Q19. How does SQLite VSS work on a mobile device? What are the memory and
+     storage constraints you had to work around?
+
+A19. • SQLite VSS: vector similarity search extension for SQLite (L2/cosine distance)
+     • Stores embeddings as BLOBs in an SQLite table with a virtual index
+     • Memory: limited to ~50-100MB on mobile; index must fit in RAM for fast queries
+     • Storage: embeddings at 384-dim × float32 = ~1.5KB per vector — manageable for <10K events
+     • Constraint: no HNSW on mobile — uses brute-force scan (fast enough for small datasets)
+     • Trade-off: accepted linear scan latency for privacy (no cloud vector DB dependency)
+
+---
+
+Q20. You mention "concurrent CRUD operations." How do you handle race
+     conditions when two agent threads try to modify the same calendar event?
+
+A20. • SQLite: uses WAL (Write-Ahead Logging) mode for concurrent read/write
+     • Write serialization: SQLite locks the DB for writes — only one writer at a time
+     • App layer: optimistic locking — each event has a version counter
+     • Before update: check if version matches; if not, retry with latest version
+     • Dart isolates: agent tasks run in separate isolates — no shared mutable state
+
+---
+
+Q21. Why Flutter + Dart for an AI agent instead of a native Swift/Kotlin
+     approach? What were the performance implications?
+
+A21. • Flutter: single codebase for iOS + Android — 2x development speed
+     • Dart: strong async support (Futures, Streams) — ideal for agent workflows
+     • Performance: Flutter renders at 60fps; Dart's AOT compilation = near-native speed
+     • Trade-off: slightly higher memory footprint vs. native, but negligible for this app
+     • Native SDK access: used platform channels for Google Cloud APIs where needed
+
+---
+
+Q22. Across all three projects, what is your approach to prompt engineering?
+     Do you version-control your prompts? How do you test prompt regressions?
+
+A22. • Prompts stored as separate Python modules (prompt.py) — version-controlled in Git
+     • Structure: system instruction + few-shot examples + dynamic context injection
+     • Testing: maintain a "golden set" of 10-20 test cases with expected outputs
+     • Regression check: run golden set after each prompt change, compare with previous
+     • LangSmith traces let me diff prompt versions and measure output quality changes
+
+---
+
+Q23. If you had to pick ONE project to rebuild from scratch with unlimited
+     resources, which would it be and what would you change architecturally?
+
+A23. • Choice: Package Conflict Resolver — highest real-world impact potential
+     • Changes: (1) Add LangGraph for proper stateful workflow orchestration
+     • (2) Build a persistent knowledge graph of package compatibility data
+     • (3) Fine-tune a small model on dependency resolution patterns (distill from Gemini)
+     • (4) Add a CI/CD integration so it auto-runs on pull requests
+     • (5) Production-grade API with rate limiting, auth, and usage analytics
+
+---
+
+Q24. How do you handle API key management and secrets across your deployed
+     applications? Walk me through your security model.
+
+A24. • Local development: .env files excluded via .gitignore
+     • Deployed apps (Streamlit Cloud): platform-managed secrets (encrypted at rest)
+     • Hugging Face Spaces: secrets injected as environment variables
+     • Never hardcoded in source — all keys accessed via os.getenv() or python-dotenv
+     • Improvement: would add key rotation and scoped permissions in production
+
+---
+
+Q25. What is the hardest debugging session you've had across these projects?
+     What was the root cause, and how long did it take to find?
+
+A25. • Project: Package Resolver — agents producing contradictory resolution plans
+     • Symptom: Resolver Agent kept reverting Analyzer Agent's version pins
+     • Root cause: shared state was being overwritten without merge logic — race condition
+     • Fix: implemented a state-locking mechanism with version-tracked updates
+     • Time: ~4 hours to isolate, since non-deterministic LLM outputs made repro hard
+     • Lesson: always add deterministic logging for agent state transitions
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 2: MACHINE LEARNING & DEEP LEARNING FUNDAMENTALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q26. Explain the difference between LoRA and full fine-tuning.
+
+A26. • Full fine-tuning: updates ALL model parameters — requires full GPU memory
+     • LoRA: freezes base model, injects small trainable low-rank matrices (A, B)
+     • Math: W' = W + BA, where B ∈ R^(d×r), A ∈ R^(r×k), r << min(d, k)
+     • Benefit: reduces trainable params by 90%+; trains on a single GPU
+     • Choose LoRA when: limited compute, domain adaptation, avoiding catastrophic forgetting
+     • Choose full FT when: massive dataset, need to change model behavior fundamentally
+
+---
+
+Q27. How do Transformer attention mechanisms work? Derive the computational
+     complexity of self-attention and explain why it's quadratic.
+
+A27. • Attention(Q, K, V) = softmax(QK^T / √d_k) × V
+     • Q, K, V are linear projections of input X: Q = XW_Q, K = XW_K, V = XW_V
+     • QK^T: matrix multiplication of (n × d) × (d × n) = n × n → O(n²d)
+     • Softmax over n×n matrix → O(n²)
+     • Final multiply (n×n) × (n×d) → O(n²d)
+     • Total: O(n²d) — quadratic in sequence length n
+     • Why quadratic: every token attends to every other token (all-pairs comparison)
+
+---
+
+Q28. What is the difference between cosine similarity and dot product
+     similarity when comparing embeddings?
+
+A28. • Cosine: cos(A, B) = (A·B) / (||A|| × ||B||) — normalized, range [-1, 1]
+     • Dot product: A·B = Σ(a_i × b_i) — unnormalized, range (-∞, +∞)
+     • Cosine ignores magnitude, measures only directional similarity
+     • Dot product is affected by vector magnitude — longer vectors score higher
+     • Choice matters when: embeddings are not L2-normalized (dot product biases toward longer docs)
+     • Best practice: L2-normalize embeddings, then cosine ≡ dot product
+
+---
+
+Q29. Explain the bias-variance tradeoff.
+
+A29. • Bias: error from oversimplified model assumptions (underfitting)
+     • Variance: error from sensitivity to training data fluctuations (overfitting)
+     • Total Error = Bias² + Variance + Irreducible Noise
+     • Diagnosis: training loss high + val loss high → high bias (underfit)
+     • Training loss low + val loss high → high variance (overfit)
+     • Fix bias: more complex model, more features. Fix variance: regularization, more data
+
+---
+
+Q30. What is the vanishing gradient problem?
+
+A30. • Gradients shrink exponentially through layers during backprop (∂L/∂w → 0)
+     • Cause: repeated multiplication by values < 1 (sigmoid/tanh activations)
+     • LSTMs fix it: gating mechanism (forget/input/output gates) controls gradient flow
+     • Transformers fix it: (1) residual connections (skip connections) bypass layers
+     • (2) Layer normalization stabilizes activations at each layer
+     • (3) Self-attention provides direct gradient paths to all positions (no sequential chain)
+
+---
+
+Q31. Explain cross-entropy loss.
+
+A31. • Formula: L = -Σ y_i × log(ŷ_i) where y = true label (one-hot), ŷ = predicted prob
+     • Binary CE: L = -[y·log(ŷ) + (1-y)·log(1-ŷ)]
+     • Why not MSE: CE penalizes confident wrong predictions heavily (log → -∞ as ŷ → 0)
+     • MSE gradient vanishes near 0 and 1 (sigmoid saturation) — CE doesn't
+     • Gradient: ∂L/∂z = ŷ - y (elegant, no saturation when combined with softmax)
+     • Optimizes for calibrated probabilities, not just correct ranking
+
+---
+
+Q32. What is batch normalization?
+
+A32. • Normalizes layer inputs: x̂ = (x - μ_B) / √(σ²_B + ε), then y = γx̂ + β
+     • μ_B, σ²_B computed per mini-batch during training
+     • Accelerates training by reducing internal covariate shift
+     • Training: uses batch statistics (mean, variance of current batch)
+     • Inference: uses running averages (exponential moving average from training)
+     • Allows higher learning rates and acts as a mild regularizer
+
+---
+
+Q33. Explain L1 vs L2 regularization.
+
+A33. • L1 (Lasso): adds λΣ|w_i| to loss → gradient is ±λ (constant push toward 0)
+     • L2 (Ridge): adds λΣw_i² to loss → gradient is 2λw_i (proportional push)
+     • L1 sparsity: constant gradient pushes small weights exactly to 0 → feature selection
+     • L2 shrinks all weights but never to exactly 0 → keeps all features, just smaller
+     • Use L1 for feature selection / interpretability; L2 when all features are relevant
+     • Elastic Net: combines both → λ₁|w| + λ₂w²
+
+---
+
+Q34. What are Sentence Transformers?
+
+A34. • Fine-tuned BERT/RoBERTa models that produce fixed-size sentence embeddings
+     • Vanilla BERT: outputs per-token embeddings → need pooling, not optimized for similarity
+     • Sentence Transformers: trained with siamese/triplet networks on NLI + STS data
+     • Output: single vector per sentence optimized for cosine similarity comparison
+     • Training loss: contrastive loss or multiple negatives ranking loss
+     • Key models: all-MiniLM-L6-v2 (fast), all-mpnet-base-v2 (quality), e5-large (SOTA)
+
+---
+
+Q35. Explain contrastive learning in embedding models.
+
+A35. • Goal: pull similar pairs together, push dissimilar pairs apart in embedding space
+     • Contrastive loss: L = (1-y)½D² + y½max(0, margin-D)² where D = distance
+     • Triplet loss: L = max(0, D(anchor,positive) - D(anchor,negative) + margin)
+     • InfoNCE (used in CLIP): L = -log(exp(sim(a,p)/τ) / Σexp(sim(a,n_i)/τ))
+     • Multiple Negatives Ranking Loss: most efficient for Sentence Transformers
+     • Key: quality of negatives matters — hard negatives improve embedding quality
+
+---
+
+Q36. What is knowledge distillation?
+
+A36. • Training a small "student" model to mimic a large "teacher" model's behavior
+     • Student trained on soft labels (teacher's probability distribution, not hard labels)
+     • Loss: α × CE(student, teacher_soft) + (1-α) × CE(student, hard_labels)
+     • Temperature τ > 1 softens teacher outputs → reveals inter-class relationships
+     • For on-device: distill GPT-4 → DistilBERT-sized model for specific task
+     • Benefits: 4-10x smaller model, 2-5x faster inference, minimal quality loss
+
+---
+
+Q37. Explain precision, recall, F1, and AUC-ROC.
+
+A37. • Precision: TP / (TP + FP) — "of predicted positives, how many are correct?"
+     • Recall: TP / (TP + FN) — "of actual positives, how many did we catch?"
+     • F1: 2 × (P × R) / (P + R) — harmonic mean, balances both
+     • AUC-ROC: area under TPR vs FPR curve — threshold-independent ranking quality
+     • Optimize recall: medical diagnosis (don't miss cancer), fraud detection
+     • Optimize precision: spam filtering (don't block legitimate emails)
+
+---
+
+Q38. How does gradient descent differ from Adam optimizer?
+
+A38. • SGD: w = w - η × ∂L/∂w (fixed learning rate, no memory)
+     • Adam combines: (1) Momentum — exponential moving avg of gradients (m_t)
+     • (2) RMSProp — exponential moving avg of squared gradients (v_t)
+     • Update: w = w - η × m̂_t / (√v̂_t + ε) where m̂, v̂ are bias-corrected
+     • Adam: adaptive per-parameter learning rates, faster convergence
+     • Trade-off: Adam may generalize worse than well-tuned SGD with scheduling
+
+---
+
+Q39. Generative vs discriminative models?
+
+A39. • Discriminative: models P(y|x) directly — learns decision boundary
+     • Examples: logistic regression, SVM, BERT classifier, most neural classifiers
+     • Generative: models P(x, y) = P(x|y) × P(y) — learns data distribution
+     • Examples: Naive Bayes, GANs, VAEs, GPT, diffusion models
+     • Discriminative preferred: when you have lots of labeled data, care only about classification
+     • Generative preferred: data augmentation, anomaly detection, creative generation
+
+---
+
+Q40. How does Mixture of Experts (MoE) work?
+
+A40. • Architecture: multiple "expert" sub-networks + a gating/router network
+     • Router: assigns each token to top-k experts (typically k=2 out of 8-64 experts)
+     • Only selected experts compute for each token → sparse activation
+     • Benefit: total model params can be huge (1T+), but per-token compute stays small
+     • Mixtral-8x7B: 8 experts of 7B each, but only 2 active = 14B active params
+     • Challenge: load balancing (preventing "expert collapse" — all tokens → 1 expert)
+
+---
+
+Q41. What is KL Divergence?
+
+A41. • DKL(P || Q) = Σ P(x) × log(P(x) / Q(x)) — measures how Q diverges from P
+     • Always ≥ 0; equals 0 only when P ≡ Q
+     • Asymmetric: DKL(P||Q) ≠ DKL(Q||P)
+     • VAEs: ELBO loss = Reconstruction Loss + DKL(q(z|x) || p(z)) — regularizes latent space
+     • RLHF: KL penalty between fine-tuned policy and base model → prevents reward hacking
+     • Intuition: penalizes the model for drifting too far from a reference distribution
+
+---
+
+Q42. Beam search vs greedy vs nucleus (top-p) sampling?
+
+A42. • Greedy: always pick highest-probability token → fast, repetitive, deterministic
+     • Beam search: track top-B sequences at each step → better global optimum, still repetitive
+     • Top-p (nucleus): sample from smallest set whose cumulative prob ≥ p (e.g., p=0.9)
+     • Top-p: more diverse, creative outputs — best for conversation/generation
+     • Beam search: best for translation, summarization (where faithfulness matters)
+     • Temperature: < 1 sharpens distribution (more deterministic), > 1 flattens (more random)
+
+---
+
+Q43. Why multiple attention heads?
+
+A43. • Each head operates on a subspace: d_head = d_model / n_heads
+     • Different heads learn different relationship types (syntactic, semantic, positional)
+     • Single large attention: can only capture one weighted mix of relationships
+     • Multi-head: parallel attention patterns → richer representation
+     • Concatenated outputs are linearly projected: MultiHead = Concat(head_1,...,head_h) × W_O
+     • Empirically: removing heads degrades performance; some heads are more interpretable
+
+---
+
+Q44. Pre-training vs fine-tuning vs in-context learning?
+
+A44. • Pre-training: train on massive unlabeled data (next-token prediction) — learns language
+     • Fine-tuning: update pre-trained weights on task-specific labeled data — adapts knowledge
+     • ICL: provide examples in the prompt at inference — no weight updates
+     • Pre-training: expensive ($M+), done once by labs (e.g., GPT-4, Llama)
+     • Fine-tuning: moderate cost, best when you have 1K-100K labeled examples
+     • ICL: zero cost, works with few-shot examples, but limited by context window
+
+---
+
+Q45. How do you evaluate LLM output quality beyond accuracy?
+
+A45. • Ragas: measures faithfulness, answer relevancy, context precision for RAG
+     • DeepEval: G-Eval (LLM-as-judge), hallucination score, toxicity detection
+     • BLEU/ROUGE: n-gram overlap with reference — good for translation/summarization
+     • Human evaluation: Likert scales for helpfulness, coherence, harmlessness
+     • Perplexity: measures how well model predicts held-out text (lower = better)
+     • Custom evals: task-specific metrics (e.g., dependency resolution success rate)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 3: DATA ENGINEERING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q46. Data lake vs data warehouse?
+
+A46. • Data lake: raw, unstructured/semi-structured data (S3, GCS) — schema-on-read
+     • Data warehouse: structured, cleaned, transformed data — schema-on-write
+     • Lake: cheap storage, flexible, good for ML (raw features, embeddings, logs)
+     • Warehouse: fast queries, BI dashboards, SQL-optimized (BigQuery, Snowflake)
+     • ML pipelines: lake for raw data ingestion → warehouse for curated feature tables
+     • Modern: lakehouse architecture (Delta Lake, Iceberg) combines both
+
+---
+
+Q47. Batch vs stream processing?
+
+A47. • Batch: process large volumes on a schedule (hourly/daily) — Spark, Airflow
+     • Stream: process events in real-time as they arrive — Kafka, Flink, Spark Streaming
+     • Lambda architecture: batch layer + speed layer (process in both, merge results)
+     • Kappa architecture: everything is a stream (simpler, Kafka-based)
+     • Design: use Kafka for ingestion → Flink for real-time + Spark for batch backfills
+     • Trade-off: batch = simpler, cheaper; stream = lower latency, higher complexity
+
+---
+
+Q48. How does vector indexing (HNSW, IVF) work internally?
+
+A48. • HNSW: Hierarchical Navigable Small World graph — multi-layer proximity graph
+     • Search: start from top layer, greedily descend to nearest neighbor, refine at bottom
+     • IVF (Inverted File): partition vectors into clusters via k-means, search nearest cluster(s)
+     • HNSW: O(log n) search, high recall, high memory (graph in RAM)
+     • IVF: lower memory, but recall depends on nprobe (number of clusters searched)
+     • Trade-off: HNSW = better recall for <10M vectors; IVF-PQ = better for 100M+ (with compression)
+
+---
+
+Q49. CAP theorem?
+
+A49. • Consistency: every read returns the most recent write
+     • Availability: every request receives a response (even if not the latest)
+     • Partition tolerance: system continues despite network failures between nodes
+     • Theorem: can only guarantee 2 of 3 in a distributed system
+     • Pinecone: prioritizes AP (available + partition-tolerant) — eventual consistency
+     • Production ML: usually accept eventual consistency for lower latency
+
+---
+
+Q50. What is data skew and how to mitigate it?
+
+A50. • Data skew: uneven distribution of data across partitions — one partition is 100x larger
+     • Effect: one Spark task takes 10 minutes, others finish in 10 seconds → bottleneck
+     • Mitigation: (1) salting — add random prefix to skewed keys to distribute them
+     • (2) Adaptive Query Execution (AQE) in Spark 3.x — auto-coalesces partitions
+     • (3) Broadcast joins for small tables instead of shuffle joins
+     • (4) Custom partitioning: hash on a more uniform key
+
+---
+
+Q51. Design an ETL pipeline for 10 million resumes daily?
+
+A51. • Ingest: upload resumes to GCS bucket → trigger Cloud Function / Pub/Sub event
+     • Extract: Tika/PyPDF for text extraction, parallel workers (Cloud Run / k8s pods)
+     • Transform: chunk text (RecursiveCharacterTextSplitter), embed via Sentence Transformers
+     • Batch embedding: use GPU inference server (Triton / TGI) for throughput
+     • Load: batch upsert into Pinecone (upsert supports batches of 100 vectors)
+     • Orchestration: Airflow DAG with retry logic, dead-letter queue for failures
+
+---
+
+Q52. What is schema evolution?
+
+A52. • Schema evolution: changing data schema (add/remove/rename fields) without breaking pipelines
+     • Critical because: downstream consumers (ML models, dashboards) break on unexpected schemas
+     • Forward compatibility: old code reads new schema (new fields ignored)
+     • Backward compatibility: new code reads old schema (defaults for missing fields)
+     • Tools: Avro (first-class schema evolution), Protobuf, Parquet (additive columns)
+     • Handle it: schema registry (Confluent) + versioned schemas + migration scripts
+
+---
+
+Q53. OLTP vs OLAP?
+
+A53. • OLTP: Online Transaction Processing — short reads/writes, row-oriented (MySQL, PostgreSQL)
+     • OLAP: Online Analytical Processing — complex aggregations, column-oriented (BigQuery, Redshift)
+     • OLTP optimized for: INSERT/UPDATE single rows, high concurrency, low latency
+     • OLAP optimized for: SELECT with GROUP BY, SUM, COUNT over millions of rows
+     • Company role dataset: OLAP — read-heavy, aggregated queries, not real-time writes
+     • In practice: OLTP for app backend → replicate to OLAP for analytics
+
+---
+
+Q54. ACID properties?
+
+A54. • Atomicity: transaction is all-or-nothing (commit or rollback entirely)
+     • Consistency: transaction moves DB from one valid state to another
+     • Isolation: concurrent transactions don't interfere (serializable, repeatable read, etc.)
+     • Durability: committed data survives crashes (written to disk/WAL)
+     • NoSQL (MongoDB, DynamoDB): often sacrifice consistency for availability (BASE model)
+     • Vector DBs (Pinecone): eventual consistency, no traditional ACID guarantees
+
+---
+
+Q55. How to implement CDC for real-time Pinecone updates?
+
+A55. • CDC: capture row-level changes (INSERT/UPDATE/DELETE) from source DB
+     • Tools: Debezium (reads MySQL/PostgreSQL WAL) → streams changes to Kafka
+     • Pipeline: Kafka → consumer service → re-embed changed document → upsert to Pinecone
+     • Pinecone upsert is idempotent (same ID overwrites) — natural for CDC
+     • DELETE: Pinecone's delete-by-ID API removes stale vectors
+     • Latency: end-to-end ~seconds (Debezium → Kafka → Pinecone upsert)
+
+---
+
+Q56. Partitioning vs sharding?
+
+A56. • Partitioning: splitting data within a single DB instance (by range, hash, or list)
+     • Sharding: splitting data across multiple DB instances/servers
+     • Partitioning: logical split (same server); Sharding: physical split (different servers)
+     • For 100M embeddings: shard by namespace/tenant across multiple Pinecone indexes
+     • Within each shard: Pinecone auto-partitions by metadata
+     • Alternative: use Pinecone's serverless (auto-scales) or pod-based with replicas
+
+---
+
+Q57. What is data lineage?
+
+A57. • Data lineage: tracking the origin, transformations, and destination of data
+     • Answers: "Where did this data come from? What changed it? Who consumed it?"
+     • Critical for ML: if model performance drops, trace back to which data source changed
+     • Tools: Apache Atlas, DataHub, OpenLineage, dbt (built-in lineage for SQL transforms)
+     • Example: resume embedding quality drops → lineage shows PDF parser was updated → root cause
+     • Also required for compliance (GDPR: "where is this user's data stored?")
+
+---
+
+Q58. Handling duplicates in streaming pipelines?
+
+A58. • Exactly-once: each record processed precisely once (hardest guarantee)
+     • At-least-once: records may be processed multiple times (easier, need dedup)
+     • At-most-once: records may be dropped (simplest, usually unacceptable)
+     • Dedup strategies: (1) idempotent writes (upsert by unique key)
+     • (2) Bloom filter for probabilistic dedup (fast, some false positives)
+     • (3) Kafka exactly-once: enable.idempotence=true + transactional producers
+
+---
+
+Q59. What is a slowly changing dimension (SCD)?
+
+A59. • SCD: dimension data that changes over time (e.g., student's skills evolving)
+     • Type 1: overwrite old value — no history preserved
+     • Type 2: add new row with versioning (start_date, end_date, is_current flag) — full history
+     • Type 3: add new column for previous value — limited history (only last change)
+     • For student skill profile: SCD Type 2 → track skill progression over semesters
+     • Enables: "what skills did this student have when they applied 6 months ago?"
+
+---
+
+Q60. Design a feature store for real-time ML inference?
+
+A60. • Components: (1) Offline store: batch-computed features in Parquet/BigQuery
+     • (2) Online store: low-latency key-value store (Redis, DynamoDB) for serving
+     • (3) Feature registry: metadata, schemas, ownership, versioning
+     • (4) Transformation engine: computes features (batch via Spark, stream via Flink)
+     • Tools: Feast (open-source), Tecton, SageMaker Feature Store
+     • Pattern: batch features backfilled daily → online store synced for real-time reads
+
+---
+
+Q61. Row-oriented vs columnar storage?
+
+A61. • Row-oriented: stores data row by row (MySQL, PostgreSQL) — fast for INSERT/row lookup
+     • Columnar: stores data column by column (Parquet, ORC, BigQuery) — fast for aggregation
+     • Parquet advantage: reads only needed columns → less I/O for SELECT col1, col2
+     • Compression: columnar stores compress better (similar values in a column)
+     • ML workloads: Parquet is standard — read specific features without loading all columns
+     • Trade-off: row stores better for transactional writes; columnar for analytical reads
+
+---
+
+Q62. Monitoring data quality in production?
+
+A62. • Metrics: completeness (null %), consistency, freshness (time since last update)
+     • Schema validation: reject records that don't match expected types/fields
+     • Distribution checks: monitor mean, stddev, min, max — alert on drift (>2σ shift)
+     • Tools: Great Expectations (assertion-based), dbt tests, Monte Carlo, Soda
+     • Alerting: integrate with PagerDuty/Slack — critical if null rate spikes above threshold
+     • ML-specific: monitor feature distribution drift before it degrades model performance
+
+---
+
+Q63. Idempotency in data pipelines?
+
+A63. • Idempotent: running the same job twice produces the same result (no duplicates)
+     • Why critical: retries after failure must not corrupt data
+     • Techniques: (1) upsert instead of insert (overwrite by unique key)
+     • (2) Write to a staging table → atomic swap with production table
+     • (3) Use deterministic output paths (partition by date, overwrite partition on rerun)
+     • (4) Track processed offsets (Kafka consumer offsets, checkpoint files)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 4: SYSTEM DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q64. Design a multi-agent customer support system?
+
+A64. • Router Agent: classifies incoming ticket (billing, shipping, technical, etc.)
+     • Specialist Agents: domain-specific agents with access to relevant knowledge bases
+     • Memory: per-conversation session state (Redis) + long-term user history (PostgreSQL)
+     • Escalation: if specialist confidence < threshold or user requests → route to human
+     • Architecture: FastAPI gateway → Kafka queue → agent workers → response via WebSocket
+     • Guardrails: content filter on outputs, PII redaction, sentiment monitoring
+
+---
+
+Q65. Design a RAG pipeline for 1M queries/day with sub-200ms latency?
+
+A65. • Query cache: Redis with TTL — popular queries return instantly (~5ms)
+     • Embedding: pre-computed query embeddings for common patterns
+     • Vector DB: Pinecone serverless with HNSW index, top-5 retrieval (~30ms)
+     • LLM: use a fast model (Gemini Flash / Claude Haiku) with streaming (~150ms first token)
+     • Pre-fetch: predict likely follow-up queries, pre-compute retrievals
+     • Infra: auto-scaling Cloud Run behind CDN, 3 replicas across regions
+
+---
+
+Q66. Architect a multi-agent code collaboration system?
+
+A66. • Agents: Writer (generates code), Reviewer (runs linting + tests), Deployer (CI/CD)
+     • Orchestrator: manages workflow state, enforces review before deploy
+     • Guardrails: sandboxed execution (Docker containers), no network access during code gen
+     • Safety: human approval gate before any production deployment
+     • Rollback: auto-revert if post-deploy health checks fail within 5 minutes
+     • Testing: agent-generated tests must pass before code merges
+
+---
+
+Q67. Design a real-time recommendation system with cold-start handling?
+
+A67. • Embedding-based: user profile vector ↔ item embedding cosine similarity
+     • Cold-start (users): use content-based features (demographics, stated preferences)
+     • Cold-start (items): use item metadata embeddings until interaction data accumulates
+     • Warm users: collaborative filtering via matrix factorization + embedding hybrid
+     • Serving: ANN index (Pinecone/Milvus) for real-time top-k retrieval
+     • Re-ranking: lightweight model scores top-50 candidates → return top-10
+
+---
+
+Q68. Build an MCP server with 50 tools?
+
+A68. • Tool registry: JSON schema definitions for all 50 tools, grouped by category
+     • Discovery: expose a /list_tools endpoint; LLM selects based on descriptions
+     • Selection efficiency: hierarchical routing — first pick category, then specific tool
+     • Execution: each tool runs in isolated try/except with timeout (30s max)
+     • Error recovery: return structured error to LLM → LLM can retry or choose alternate tool
+     • Optimization: cache frequently used tool results; lazy-load rarely used tool dependencies
+
+---
+
+Q69. Design a distributed web scraping system?
+
+A69. • Architecture: URL queue (Redis/Kafka) → pool of async scraper workers → storage (S3)
+     • Rate limiting: per-domain font bucket rate limiter — respect robots.txt
+     • Failures: retry with backoff, dead-letter queue for permanently failed URLs
+     • Output: scraped markdown stored in S3, metadata in PostgreSQL, embeddings in Pinecone
+     • Scheduling: priority queue — high-value docs scraped first, stale docs re-scraped
+     • Scale: k8s horizontal pod autoscaler based on queue depth
+
+---
+
+Q70. A/B testing different prompts in production?
+
+A70. • Traffic split: route 50/50 (or 90/10 for risky changes) using request ID hash
+     • Metrics: task success rate, user satisfaction (thumbs up/down), latency, token cost
+     • Statistical test: two-proportion z-test or Bayesian A/B testing
+     • Minimum sample: calculate required sample size for statistical power (p < 0.05)
+     • Logging: log prompt version, model output, and user feedback for every request
+     • Guardrails: auto-stop variant if quality dips below baseline by >10%
+
+---
+
+Q71. Design an offline on-device AI agent?
+
+A71. • Model: quantized small LLM (Gemma 2B / Phi-3 Mini GGUF) running via ONNX/TFLite
+     • Storage: SQLite for structured data, SQLite VSS for embeddings (all local)
+     • Constraints: ~2GB RAM budget, ~500MB model size, battery optimization
+     • Model updates: download delta updates over WiFi, apply on next app restart
+     • Offline RAG: pre-load relevant document embeddings during WiFi-connected periods
+     • Sync: queue actions while offline → reconcile with cloud state when back online
+
+---
+
+Q72. Multi-tenant SaaS with per-customer fine-tuned LLMs?
+
+A72. • Isolation: each tenant's fine-tuned adapter (LoRA) stored separately, base model shared
+     • Serving: single base model + dynamically load tenant LoRA adapter at inference time
+     • Cost: LoRA adapters are <100MB each — 1000 tenants = 100GB storage (manageable)
+     • Deployment: vLLM with LoRA hot-swapping — no model reload per request
+     • Data isolation: tenant data stored in namespace-partitioned vector DB
+     • Billing: meter per-token usage per tenant via API gateway middleware
+
+---
+
+Q73. Continuous evaluation of deployed LLM agents?
+
+A73. • Online eval: sample N% of production traffic → run through eval pipeline async
+     • Metrics: task success rate, hallucination rate (Ragas faithfulness), latency P99
+     • Drift detection: compare current output distribution vs. baseline (KL divergence)
+     • Regression: nightly golden-set eval — alert if any metric drops below threshold
+     • Adversarial: inject known adversarial inputs periodically, verify guardrails hold
+     • Dashboard: Grafana/Datadog with real-time eval metrics + alerting rules
+
+---
+
+Q74. Design a knowledge graph for GraphRAG?
+
+A74. • Entities: People, Companies, Skills, Courses, Roles, Technologies
+     • Relationships: REQUIRES_SKILL, OFFERS_ROLE, TEACHES_TOPIC, PREREQ_OF
+     • Storage: Neo4j or Amazon Neptune (native graph DB with Cypher/Gremlin queries)
+     • GraphRAG: query KG for structured context → combine with vector retrieval → feed to LLM
+     • Optimization: pre-compute common traversals (2-hop paths), cache in Redis
+     • Ingestion: extract entities from documents using NER → link to existing graph nodes
+
+---
+
+Q75. FastAPI backend for sync + async agent workflows?
+
+A75. • Sync endpoints: /query → direct LLM call with streaming (SSE), timeout at 30s
+     • Async endpoints: /submit-task → returns task_id, agent runs in background worker
+     • Workers: Celery with Redis broker, or FastAPI BackgroundTasks for lightweight jobs
+     • Progress: WebSocket channel per task_id for real-time status updates
+     • Retries: exponential backoff on LLM failures, max 3 attempts, then fail with reason
+     • Timeouts: per-step timeouts (scrape: 10s, LLM: 30s, total: 120s)
+
+---
+
+Q76. Multilingual semantic search system?
+
+A76. • Embedding model: multilingual-e5-large or paraphrase-multilingual-mpnet-base-v2
+     • These models map 50+ languages to a shared embedding space
+     • Query in Hindi → retrieves English documents (cross-lingual similarity works)
+     • Indexing: embed all documents regardless of language into single Pinecone namespace
+     • Optional: language detection → boost results in query language via metadata filter
+     • Evaluation: test retrieval quality per language pair using multilingual STS benchmarks
+
+---
+
+Q77. AI agent that browses the web and fills forms?
+
+A77. • Browser automation: Playwright or Selenium (headless Chrome) controlled by LLM
+     • Structure: Agent decides actions (click, type, scroll) based on DOM snapshot
+     • Reliability: retry failed actions, handle dynamic loading (wait for elements)
+     • Security: sandboxed browser (no access to local filesystem, network restricted)
+     • Data extraction: LLM parses rendered page → extracts structured JSON
+     • Challenges: CAPTCHAs, cookie consent, dynamic SPAs, anti-bot detection
+
+---
+
+Q78. Unstructured document processing pipeline?
+
+A78. • PDFs: PyPDF/pdfplumber for text; OCR (Tesseract) for scanned PDFs
+     • Images: vision model (GPT-4V, Gemini Vision) for description → text embedding
+     • Spreadsheets: Pandas reads → each row becomes a text chunk with column headers
+     • Unified embedding: all modalities converted to text → embedded with same model
+     • Modality tag: add metadata field (type: pdf/image/spreadsheet) for filtered retrieval
+     • Challenge: tables in PDFs lose structure — use Camelot or Tabula for table extraction
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 5: PYTHON & CODING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q79. Python GIL and AsyncIO?
+
+A79. • GIL: Global Interpreter Lock — only one thread executes Python bytecode at a time
+     • Effect: multi-threading does NOT give CPU parallelism in CPython
+     • I/O-bound tasks: threads release GIL during I/O waits — but context switching overhead
+     • AsyncIO: single-threaded event loop, cooperative multitasking via coroutines
+     • Better for agents: thousands of concurrent API calls with minimal memory/overhead
+     • CPU-bound work: use multiprocessing (ProcessPoolExecutor) to bypass GIL entirely
+
+---
+
+Q80. asyncio.gather() vs asyncio.wait() vs TaskGroup?
+
+A80. • gather(*coros): run all concurrently, return results in input order. Cancels all on first error (if return_exceptions=False)
+     • wait(tasks): returns (done, pending) sets. More control: FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED
+     • TaskGroup (3.11+): structured concurrency — if any task fails, all others are cancelled
+     • Use gather: when you need all results and want ordered output
+     • Use wait: when you need to process results as they complete
+     • Use TaskGroup: when tasks are interdependent and you want clean error handling
+
+---
+
+Q81. Exponential backoff with jitter?
+
+A81. • import asyncio, random
+     • async def retry_with_backoff(func, max_retries=5, base_delay=1):
+     •     for attempt in range(max_retries):
+     •         try: return await func()
+     •         except Exception as e:
+     •             if attempt == max_retries - 1: raise
+     •             delay = base_delay * (2 ** attempt) + random.uniform(0, 1)  # jitter
+     •             await asyncio.sleep(delay)
+     • Jitter prevents thundering herd (all clients retrying at the same time)
+
+---
+
+Q82. Generators and yield for LLM streaming?
+
+A82. • Generator: function with `yield` — lazily produces values one at a time
+     • For streaming: async def stream_llm():
+     •     async for chunk in model.astream(prompt):
+     •         yield chunk.text  # token-by-token
+     • FastAPI: return StreamingResponse(stream_llm(), media_type="text/event-stream")
+     • Memory efficient: never holds full response in memory
+     • Benefit: user sees tokens appearing in real-time (perceived latency = time-to-first-token)
+
+---
+
+Q83. __slots__ vs __dict__?
+
+A83. • __dict__: default — each instance stores attributes in a dictionary (flexible, costly)
+     • __slots__: declare fixed attributes — no __dict__ created, uses tuple-like storage
+     • Memory: __slots__ saves ~40-50% memory per instance (no per-instance dict overhead)
+     • Speed: attribute access is slightly faster with __slots__ (direct offset lookup)
+     • Use __slots__: when creating millions of instances (e.g., data pipeline records)
+     • Limitation: can't dynamically add attributes not listed in __slots__
+
+---
+
+Q84. async for and async with?
+
+A84. • async for: iterates over an async iterator (__aiter__ / __anext__ methods)
+     • Example: async for chunk in llm.astream(prompt): process(chunk)
+     • async with: async context manager (__aenter__ / __aexit__ methods)
+     • Example: async with aiohttp.ClientSession() as session: await session.get(url)
+     • Agent use case: async with opens DB connection → async for streams agent tool results
+     • Both required because you can't use regular for/with on awaitable objects
+
+---
+
+Q85. functools.lru_cache limitations for LLM caching?
+
+A85. • lru_cache: in-memory memoization decorator using a dictionary (hash-based)
+     • Internally: bounded dict with LRU eviction policy, stores (args) → result
+     • Limitation 1: args must be hashable (lists/dicts → unhashable → can't cache)
+     • Limitation 2: in-process only — cache lost on restart, not shared across workers
+     • Limitation 3: no TTL — stale results stay forever until evicted by LRU
+     • Better for LLM: use Redis with TTL, or semantic cache (check embedding similarity)
+
+---
+
+Q86. Async timing decorator?
+
+A86. • import time, functools
+     • def log_async(func):
+     •     @functools.wraps(func)
+     •     async def wrapper(*args, **kwargs):
+     •         start = time.perf_counter()
+     •         result = await func(*args, **kwargs)
+     •         elapsed = time.perf_counter() - start
+     •         print(f"{func.__name__}({args}, {kwargs}) → {result} [{elapsed:.3f}s]")
+     •         return result
+     •     return wrapper
+
+---
+
+Q87. Shallow copy vs deep copy?
+
+A87. • Assignment: b = a → both point to SAME object (no copy at all)
+     • Shallow copy: b = a.copy() → new outer object, but nested objects still shared
+     • Deep copy: b = copy.deepcopy(a) → recursively copies everything, fully independent
+     • Data pipelines: modifying a nested dict in a shallow copy mutates the original → bugs
+     • Rule: if data has nested structures (list of dicts), always deepcopy before mutation
+     • Performance: deepcopy is slower — only use when mutation isolation is needed
+
+---
+
+Q88. Diagnosing memory leaks in Python?
+
+A88. • Tools: tracemalloc (stdlib), objgraph (visualize object references), memory_profiler
+     • tracemalloc.start() → take snapshots → compare top allocations between snapshots
+     • Common leaks: unclosed file handles, growing caches, circular references, global lists
+     • For agent servers: monitor RSS over time — if monotonically increasing, leak exists
+     • Fix: ensure proper cleanup (context managers), weak references for caches
+     • Production: set memory limits on containers, use gc.set_threshold() for tuning
+
+---
+
+Q89. dataclasses vs Pydantic?
+
+A89. • dataclasses: stdlib, lightweight, generates __init__, __repr__, __eq__
+     • Pydantic: runtime validation, type coercion, JSON serialization, schema generation
+     • Pydantic: "price='10'" → auto-converts to price=10.0 (type coercion)
+     • dataclasses: no validation — accepts anything you pass, no runtime type checking
+     • FastAPI uses Pydantic: request/response models auto-validate, auto-generate OpenAPI docs
+     • Use dataclasses for internal data; Pydantic for API boundaries
+
+---
+
+Q90. Async connection pool context manager?
+
+A90. • class LLMPool:
+     •     def __init__(self, providers): self.semaphore = asyncio.Semaphore(10)
+     •         self.sessions = {p: aiohttp.ClientSession() for p in providers}
+     •     async def __aenter__(self): return self
+     •     async def __aexit__(self, *exc):
+     •         await asyncio.gather(*(s.close() for s in self.sessions.values()))
+     •     async def call(self, provider, payload):
+     •         async with self.semaphore:  # limit concurrent calls
+     •             return await self.sessions[provider].post(url, json=payload)
+
+---
+
+Q91. Metaprogramming in Python?
+
+A91. • Metaprogramming: code that writes/modifies code at class definition time
+     • __init_subclass__: hook called when a class is subclassed — register plugins automatically
+     • __class_getitem__: enables MyClass[int] syntax (generic type hints without metaclass)
+     • Metaclass: class of a class — type() is the default metaclass
+     • Use case: auto-register all Agent subclasses into a registry dict
+     • Example: class AgentBase: registry = {}
+     •   def __init_subclass__(cls): AgentBase.registry[cls.__name__] = cls
+
+---
+
+Q92. Python garbage collection?
+
+A92. • Reference counting: each object has a refcount; when refcount → 0, immediately freed
+     • Problem: circular references (A → B → A) — refcount never reaches 0
+     • Cyclic GC: periodically scans for unreachable reference cycles (generational: gen0/1/2)
+     • gen0: newly created objects (scanned frequently)
+     • gen2: long-lived objects (scanned rarely — expensive)
+     • gc.collect() forces a full collection; gc.get_threshold() shows generation thresholds
+
+---
+
+Q93. Flatten nested JSON?
+
+A93. • def flatten(obj, prefix="", sep="."):
+     •     result = {}
+     •     for key, val in obj.items():
+     •         new_key = f"{prefix}{sep}{key}" if prefix else key
+     •         if isinstance(val, dict):
+     •             result.update(flatten(val, new_key, sep))
+     •         elif isinstance(val, list):
+     •             for i, item in enumerate(val):
+     •                 if isinstance(item, dict): result.update(flatten(item, f"{new_key}{sep}{i}", sep))
+     •                 else: result[f"{new_key}{sep}{i}"] = item
+     •         else: result[new_key] = val
+     •     return result
+
+---
+
+Q94. MRO (Method Resolution Order)?
+
+A94. • MRO: order in which Python searches base classes for a method — uses C3 linearization
+     • Diamond: D(B, C) where B(A), C(A) → MRO: D → B → C → A (each class appears once)
+     • C3 rule: children before parents, left-to-right order preserved, no class repeated
+     • Check: MyClass.__mro__ or MyClass.mro()
+     • Ensures: super() calls are predictable and don't skip/repeat any class
+     • Conflict: if C3 can't linearize (contradictory ordering), Python raises TypeError
+
+---
+
+Q95. AsyncIO rate limiter?
+
+A95. • class RateLimiter:
+     •     def __init__(self, rate): self.semaphore = asyncio.Semaphore(rate)
+     •     async def acquire(self):
+     •         await self.semaphore.acquire()
+     •         asyncio.get_event_loop().call_later(1.0, self.semaphore.release)  # release after 1s
+     • Usage: limiter = RateLimiter(10)  # 10 requests/sec
+     •   await limiter.acquire(); await make_api_call()
+     • More robust: use aiolimiter library (token bucket algorithm)
+
+---
+
+Q96. ProcessPoolExecutor vs ThreadPoolExecutor?
+
+A96. • ThreadPool: shares memory, limited by GIL → good for I/O-bound (file reads, API calls)
+     • ProcessPool: separate processes, bypasses GIL → good for CPU-bound (model inference, numpy)
+     • ML pipeline: ThreadPool for data loading/API calls, ProcessPool for feature computation
+     • ProcessPool overhead: inter-process communication via pickle (serialization cost)
+     • asyncio integration: loop.run_in_executor(pool, blocking_func) for non-async libraries
+     • Rule: I/O → threads; CPU → processes; pure async → asyncio (no executor needed)
+
+---
+
+Q97. Sliding window text chunker?
+
+A97. • def chunk_text(text, chunk_size=500, overlap=50):
+     •     words = text.split()
+     •     chunks = []
+     •     for i in range(0, len(words), chunk_size - overlap):
+     •         chunk = " ".join(words[i:i + chunk_size])
+     •         if chunk: chunks.append(chunk)
+     •     return chunks
+     • Overlap ensures context continuity across chunk boundaries
+     • For RAG: chunk_size=300-500 tokens, overlap=10-20% of chunk_size
+
+---
+
+Q98. typing.Protocol vs ABC?
+
+A98. • ABC (Abstract Base Class): requires explicit inheritance — class Foo(MyABC)
+     • Protocol: structural subtyping (duck typing) — no inheritance required
+     • Protocol: if a class has the right methods, it satisfies the Protocol automatically
+     • Preferred when: you can't modify the class hierarchy (third-party code)
+     • Example: class Embedder(Protocol): def embed(self, text: str) -> list[float]: ...
+     • Any class with an embed(str) → list[float] method satisfies Embedder — no subclassing
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 6: SCENARIO-BASED / REAL-WORLD PROBLEM SOLVING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q99. RAG returns correct but irrelevant answers?
+
+A99. • Root cause: retrieval is matching surface-level keywords, not user intent
+     • Fix 1: add a re-ranking layer (cross-encoder) between retrieval and generation
+     • Fix 2: improve chunking — chunks might be too large (mixing unrelated content)
+     • Fix 3: add query expansion (HyDE — generate hypothetical answer, then retrieve with it)
+     • Fix 4: use metadata filters to narrow retrieval scope before vector search
+     • Metric: track NDCG@k and user satisfaction (thumbs up/down) to measure improvement
+
+---
+
+Q100. Agent stuck in infinite tool-call loop?
+
+A100. • Detection: monitor per-session tool-call count — alert if > 10 calls in 60 seconds
+      • Prevention: hard cap on tool calls per session (e.g., max 8 iterations)
+      • Token budget: set max_tokens per session; exceed → force termination
+      • Root cause: usually vague tool descriptions → model can't determine termination
+      • Fix: add explicit "DONE" tool that agent must call to signal completion
+      • Observability: LangSmith trace shows the loop — inspect which tool keeps being called
+
+---
+
+Q101. Career Assistant recommends same courses to everyone?
+
+A101. • Debug step 1: check if embeddings are actually different per resume (log embeddings)
+      • Step 2: check if retrieval is returning the same chunks (Pinecone query log)
+      • Step 3: check if prompt is ignoring retrieved context (print full prompt to model)
+      • Likely causes: (1) embedding model too generic — all resumes map to similar vectors
+      • (2) Too few items in the course dataset — limited diversity to retrieve from
+      • (3) Temperature too low → model always picks the "safest" recommendation
+
+---
+
+Q102. Pinecone latency at 50M vectors?
+
+A102. • Diagnosis: check if index is on a single pod (overloaded) or serverless (auto-scales)
+      • Fix 1: add replicas — distributes read load across pod replicas
+      • Fix 2: use metadata filtering to narrow search space before ANN
+      • Fix 3: reduce top-k if possible (top-5 is faster than top-50)
+      • Fix 4: use namespaces to partition data — query only relevant namespace
+      • Fix 5: consider Pinecone serverless (auto-scales) or reduce vector dimensions (PCA)
+
+---
+
+Q103. Prompt update causes resolution rate drop?
+
+A103. • Immediate: feature flag rollback — revert to previous prompt version in config
+      • Why not code rollback: prompt changes should be decoupled from code deployments
+      • Observability needed: (1) prompt version tag on every LangSmith trace
+      • (2) Canary deployment: roll new prompt to 5% traffic first, monitor metrics
+      • (3) Golden-set eval: run automated test suite BEFORE deploying any prompt change
+      • Post-mortem: diff the two prompts, identify which instruction caused the regression
+
+---
+
+Q104. User uploads resume in unsupported language?
+
+A104. • Graceful handling: detect language (using langdetect or fasttext)
+      • If unsupported: return clear error message with list of supported languages
+      • Short-term: translate to English via Google Translate API before processing
+      • Long-term: switch to multilingual embedding model (multilingual-e5-large)
+      • This map all languages to the same vector space — no translation needed
+      • Also: update course dataset to include multilingual recommendations
+
+---
+
+Q105. Integrating with unpredictable-latency API?
+
+A105. • Pattern: fire-and-forget with callback — don't block the agent on the slow API
+      • Implementation: submit request → receive webhook/poll for result → continue other tasks
+      • AsyncIO: asyncio.wait_for(api_call(), timeout=10) — timeout and fallback
+      • Circuit breaker: if API fails 5 times in 60s → stop calling, use cached/fallback data
+      • UX: show user "processing..." with progress updates via WebSocket/SSE
+      • Agent design: parallelize independent tasks; only block when result is strictly needed
+
+---
+
+Q106. Two agents produce contradictory outputs?
+
+A106. • Arbiter pattern: introduce a "judge" agent that evaluates both outputs
+      • Judge criteria: (1) confidence scores, (2) evidence quality, (3) logical consistency
+      • Voting: if 3+ agents, use majority vote (ensemble approach)
+      • Structured output: require agents to cite sources — judge verifies citations
+      • Fallback: if no resolution, escalate to human with both outputs + reasoning
+      • Prevention: define clear non-overlapping scopes for each agent to reduce conflicts
+
+---
+
+Q107. Calendar Agent battery drain on older phones?
+
+A107. • Profiling: use Flutter DevTools performance profiler + battery historian
+      • Common causes: (1) frequent model inference (Gemini calls on every keystroke)
+      • (2) Unoptimized database queries (full table scans on every event render)
+      • (3) Background processes not properly suspended when app is backgrounded
+      • Fix: batch inference (debounce inputs), cache query results, use isolates efficiently
+      • Optimization: reduce model call frequency, use simpler rule-based routing for basic intents
+
+---
+
+Q108. Adding meaningful confidence scores?
+
+A108. • Approach 1: semantic similarity score between query embedding and retrieved contexts
+      • Approach 2: multi-model agreement — run same query through 2 models, measure overlap
+      • Approach 3: retrieval density — how many relevant chunks scored above threshold
+      • Approach 4: self-consistency — generate N answers, compute consensus percentage
+      • NOT softmax temp: that's calibration, not confidence
+      • Display: "High confidence (4/5 sources agree)" — human-interpretable, not raw probability
+
+---
+
+Q109. Crawl4AI blocked by Cloudflare?
+
+A109. • Ethical: check robots.txt; if blocked, respect it — find alternative data sources
+      • Technical: (1) use official API if available (PyPI has JSON API for package metadata)
+      • (2) Cache aggressively — scrape once, reuse for weeks (documentation doesn't change daily)
+      • (3) Use academic/research access programs if available
+      • (4) Slow down requests: add random delays (2-5s) between scrapes
+      • Never: use CAPTCHA-solving services or proxy rotation to bypass (ethical violation)
+
+---
+
+Q110. Embedding bias clustering by college?
+
+A110. • Detection: visualize embeddings (UMAP/t-SNE) — color by college, check for clusters
+      • Metric: compute intra-college vs. inter-college cosine similarity — if intra >> inter, biased
+      • Cause: college names, addresses, or formatting patterns dominate the embedding
+      • Fix 1: mask/remove college-identifying information before embedding
+      • Fix 2: fine-tune embedding model on debiased data (contrastive learning with hard negatives)
+      • Fix 3: add adversarial debiasing — train a classifier to predict college from embedding,
+        then train embedding to fool the classifier (gradient reversal)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 7: HR / BEHAVIORAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q111. Team conflict during Kalam Tech Fest?
+
+A111. • Situation: two teams (design vs. logistics) disagreed on stage setup timeline
+      • Task: as coordinator, I needed both teams to deliver without delaying the event
+      • Action: held a 15-minute joint standup, identified the dependency (design needed
+        measurements from logistics), created a shared timeline with clear handoff points
+      • Result: both teams delivered on time; we implemented daily 5-min standups for all
+        30 teams going forward, reducing coordination conflicts by ~80%
+
+---
+
+Q112. What did you sacrifice in the 24-hour hackathon?
+
+A112. • Sacrificed: comprehensive error handling, unit tests, and code documentation
+      • Kept: core functionality, clean API interface, working demo with real data
+      • Justification: hackathon judges evaluate working demos, not code quality
+      • Risk mitigation: used simple try/except blocks at critical points to prevent crashes
+      • Post-hackathon: refactored the codebase with proper error handling and tests
+      • Lesson: know when "good enough" shipping beats "perfect" never-shipping
+
+---
+
+Q113. A wrong technical decision?
+
+A113. • Decision: initially stored all embeddings in ChromaDB (local) for Package Resolver
+      • Problem: couldn't scale beyond single machine, no persistence across deployments
+      • Course correction: migrated to Pinecone — managed, persistent, serverless scaling
+      • What I learned: prototype with local tools, but design for production from day one
+      • Now: I always evaluate "can this scale to 10x users?" before choosing a database
+
+---
+
+Q114. Staying updated in AI/ML?
+
+A114. • Daily: Twitter/X (follow key researchers: Karpathy, Chip Huyen, LangChain team)
+      • Weekly: read 2-3 papers on arXiv (Agentic AI, RAG improvements, evaluation)
+      • Monthly: build something with new tools (recently: learned MCP protocol, built a server)
+      • Specific example: learned about MCP (Model Context Protocol) from Anthropic's announcement
+      • Impact: integrated MCP into my ArchMind project, replacing custom tool-calling interfaces
+      • Changed how I build: now design all agent tools as MCP-compatible from the start
+
+---
+
+Q115. Explaining RAG to non-technical stakeholders?
+
+A115. • Analogy: "Imagine a librarian. Instead of memorizing every book, they know which
+        shelf to check. RAG is a librarian for AI — it fetches relevant info and hands it
+        to the AI to construct an answer."
+      • Then: showed a simple diagram — User Query → Search → Retrieved Docs → AI Answer
+      • Avoided: jargon like "embeddings," "vector similarity," "cosine distance"
+      • Result: stakeholder understood the value proposition and approved the project scope
+
+---
+
+Q116. Senior developer disagrees with your architecture?
+
+A116. • First: actively listen to their reasoning — they likely have more context
+      • Then: present my reasoning with evidence (benchmarks, documentation, past experience)
+      • If still disagree: propose a time-boxed proof of concept for both approaches (1-2 days)
+      • Key: separate ego from code — the best technical solution wins, regardless of who proposed it
+      • Outcome: I've changed my mind 50% of the time after hearing senior feedback
+      • Rule: disagree and commit — once a decision is made, fully support the chosen approach
+
+---
+
+Q117. Stuck on a bug for 2+ hours?
+
+A117. • Step 1: take a 10-minute break (context reset)
+      • Step 2: rubber duck debugging — explain the problem out loud
+      • Step 3: add logging at every suspicious point — trace the data flow
+      • Step 4: reduce to minimal reproduction — remove everything except the failing path
+      • Step 5: search GitHub issues, Stack Overflow, and the library's source code
+      • Step 6: if still stuck after 3 hours → ask for help (team, forums, or AI tools)
+
+---
+
+Q118. Receiving critical feedback on code?
+
+A118. • Situation: a code reviewer pointed out my API lacked input validation and error handling
+      • Initial reaction: defensive (I felt the core logic was solid)
+      • What I did: re-read the feedback objectively, realized they were right — edge cases mattered
+      • Action: added Pydantic validation, proper HTTP status codes, and comprehensive error messages
+      • Result: API became much more robust; I now add validation as part of my initial implementation
+      • Lesson: feedback on code is not personal — it's a gift that prevents production failures
+
+---
+
+Q119. Ship with limitations vs delay for perfection?
+
+A119. • Framework: (1) Is the limitation a safety/data-integrity risk? → delay
+      • (2) Is it a cosmetic/non-critical issue? → ship with documented limitations
+      • (3) Can users work around it? → ship + add improvement to backlog
+      • (4) Will delaying lose a critical window (hackathon, demo, client deadline)? → ship
+      • Always: communicate limitations clearly to stakeholders before shipping
+      • Rule: "Perfect is the enemy of good" — but "broken is the enemy of trust"
+
+---
+
+Q120. Where do you see Agentic AI in 3 years?
+
+A120. • Prediction: agents will become the primary interface for software (not just chatbots)
+      • Trend 1: MCP becomes the HTTP of AI tools — standardized, universal tool access
+      • Trend 2: multi-agent swarms replace monolithic apps — specialized agents collaborating
+      • Trend 3: on-device agents become mainstream (Gemini Nano, Apple Intelligence)
+      • My positioning: building full-stack agent systems (cloud + edge), mastering MCP protocol,
+        and focusing on evaluation/observability — the production gap most competitors ignore
+      • I want to be the engineer who ships reliable agents, not just impressive demos
+
+
+================================================================================
+                          END OF ANSWER KEY
+================================================================================
